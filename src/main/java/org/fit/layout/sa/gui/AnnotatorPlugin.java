@@ -174,6 +174,7 @@ public class AnnotatorPlugin implements BrowserPlugin, RectangleSelectionListene
         {
             DefaultAreaTree atree = new DefaultAreaTree(browser.getPage());
             DefaultArea root = new DefaultArea(browser.getPage().getRoot());
+            root.setName("Root area");
             atree.setRoot(root);
             selectedParent = root;
             browser.setAreaTree(atree);
@@ -232,14 +233,21 @@ public class AnnotatorPlugin implements BrowserPlugin, RectangleSelectionListene
             List<Box> boxes = browser.getPage().getBoxesInRegion(lastSelection);
             if (!boxes.isEmpty())
             {
-                DefaultArea newarea = new DefaultArea(boxes);
                 if (selectedParent instanceof DefaultArea)
+                {
+                    //remove the boxes from the parent
+                    ((DefaultArea) selectedParent).removeBoxes(boxes);
+                    //create and append the new area from the boxes
+                    DefaultArea newarea = new DefaultArea(boxes);
                     ((DefaultArea) selectedParent).appendChild(newarea);
+                }
                 else
-                    System.err.println("Cannot add areas to this type of nodes"); //TODO
+                    browser.displayErrorMessage("Cannot add areas to this type of nodes");
             }
             browser.refreshView();
         }
+        else
+            browser.displayErrorMessage("No parent area is selected.");
     }
     
     private Rectangular findSelectedRectangle(Rectangular sel)
