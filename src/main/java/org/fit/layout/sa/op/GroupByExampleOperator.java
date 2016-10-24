@@ -22,6 +22,9 @@ public class GroupByExampleOperator extends BaseOperator
     protected final String[] paramNames = { };
     protected final ValueType[] paramTypes = { };
     
+    private AreaTree exampleTree;
+    
+    
     public GroupByExampleOperator()
     {
     }
@@ -54,6 +57,16 @@ public class GroupByExampleOperator extends BaseOperator
     public ValueType[] getParamTypes()
     {
         return paramTypes;
+    }
+    
+    public AreaTree getExampleTree()
+    {
+        return exampleTree;
+    }
+
+    public void setExampleTree(AreaTree exampleTree)
+    {
+        this.exampleTree = exampleTree;
     }
     
     //==============================================================================

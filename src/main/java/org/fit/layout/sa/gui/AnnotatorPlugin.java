@@ -7,6 +7,9 @@ package org.fit.layout.sa.gui;
 
 import javax.swing.JPanel;
 
+import org.fit.layout.api.AreaTreeOperator;
+import org.fit.layout.api.ParametrizedOperation;
+import org.fit.layout.api.ServiceManager;
 import org.fit.layout.gui.AreaSelectionListener;
 import org.fit.layout.gui.Browser;
 import org.fit.layout.gui.BrowserPlugin;
@@ -20,6 +23,7 @@ import org.fit.layout.model.Box;
 import org.fit.layout.model.LogicalAreaTree;
 import org.fit.layout.model.Page;
 import org.fit.layout.model.Rectangular;
+import org.fit.layout.sa.op.GroupByExampleOperator;
 
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
@@ -136,11 +140,16 @@ public class AnnotatorPlugin implements BrowserPlugin, RectangleSelectionListene
             gbc_deleteButton.gridy = 0;
             propertyPanel.add(deleteButton, gbc_deleteButton);
             
-            JButton saveButton = new JButton("Save");
-            GridBagConstraints gbc_saveButton = new GridBagConstraints();
-            gbc_saveButton.gridx = 0;
-            gbc_saveButton.gridy = 3;
-            propertyPanel.add(saveButton, gbc_saveButton);
+            JButton useAsExampleButton = new JButton("Use Ex.");
+            useAsExampleButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent arg0) {
+                    useForSegmentator();
+                }
+            });
+            GridBagConstraints gbc_useAsExampleButton = new GridBagConstraints();
+            gbc_useAsExampleButton.gridx = 0;
+            gbc_useAsExampleButton.gridy = 3;
+            propertyPanel.add(useAsExampleButton, gbc_useAsExampleButton);
         }
         return mainPanel;
     }
@@ -265,4 +274,20 @@ public class AnnotatorPlugin implements BrowserPlugin, RectangleSelectionListene
         return r;
     }
 
+    /**
+     * Get the current AreaTree and use it as the example tree
+     * for the GroupByExample segmentator.
+     */
+    private void useForSegmentator()
+    {
+        ParametrizedOperation op = ServiceManager.findParmetrizedService("FitLayout.Segm.GroupByExample");
+        if (op != null && op instanceof GroupByExampleOperator)
+        {
+            ((GroupByExampleOperator) op).setExampleTree(browser.getAreaTree());
+            browser.displayInfoMessage("Segmentator configured successfully");
+        }
+        else
+            browser.displayErrorMessage("Group by example operator is not available. Check your build configuration.");
+    }
+    
 }
