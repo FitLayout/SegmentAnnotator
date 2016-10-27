@@ -29,10 +29,12 @@ public class GroupByExampleOperator extends BaseOperator
     protected final ValueType[] paramTypes = { };
     
     private AreaTree exampleTree;
+    private List<AreaPattern> patterns;
     
     
     public GroupByExampleOperator()
     {
+        patterns = new ArrayList<>();
     }
     
     @Override
@@ -75,7 +77,9 @@ public class GroupByExampleOperator extends BaseOperator
     public void setExampleTree(AreaTree exampleTree)
     {
         this.exampleTree = exampleTree;
+        patterns.clear();
         recursiveAnalyzeAreas(exampleTree.getRoot());
+        log.info("{} patterns collected", patterns.size());
     }
     
     //==============================================================================
@@ -83,35 +87,89 @@ public class GroupByExampleOperator extends BaseOperator
     @Override
     public void apply(AreaTree atree)
     {
+        apply(atree, atree.getRoot());
     }
 
     @Override
     public void apply(AreaTree atree, Area root)
     {
+        recursiveScanAreaTree(root);
+    }
+    
+    //==============================================================================
+    
+    private void recursiveScanAreaTree(Area root)
+    {
+        AreaPattern pat = findMatch(root);
+        if (pat != null)
+            System.out.println("MATCH start: " + root + " matches " + pat);
+        
+        for (Area child : root.getChildAreas())
+            recursiveScanAreaTree(child);
+    }
+    
+    private AreaPattern findMatch(Area area)
+    {
+        if (!area.getBoxes().isEmpty())
+        {
+            Box box = area.getBoxes().firstElement();
+            if (box.getParentBox() != null)
+            {
+                Box parent = box.getParentBox();
+                for (AreaPattern pat : patterns)
+                {
+                    if (pat.matchesRoot(parent))
+                    {
+                        if (pat.matchesStart(box))
+                            return pat;
+                    }
+                }
+                return null; //no pattern matched
+            }
+            else
+                return null;
+        }
+        else
+            return null; //no boxes in this area
     }
     
     //==============================================================================
     
     private void recursiveAnalyzeAreas(Area root)
     {
-        analyzeArea(root);
+        if (root.getParentArea() != null) //do not analyze the root area
+            analyzeArea(root);
         for (Area child : root.getChildAreas())
             recursiveAnalyzeAreas(child);
     }
     
     private void analyzeArea(Area area)
     {
+        System.out.println("Area: " + area);
+        
         List<Box> boxes = area.getAllBoxes();
         Box cparent = getCommonAncestor(boxes);
         List<Box> groups = getGroupCommonAncestors(boxes, cparent);
-        System.out.println("Area: " + area);
-        System.out.println("  Parent: " + cparent + " : " + ((new BoxSignature(cparent)).toString()));
+        
+        if (groups.isEmpty() && cparent.getParentBox() != null)
+        {
+            //if there are no groups, we probably take the whole subtree. The parent is then one level up.
+            groups.add(cparent);
+            cparent = cparent.getParentBox();
+        }
+        
+        BoxSignature psig = new BoxSignature(cparent);
+        AreaPattern pat = new AreaPattern(psig);
+        System.out.println("  Parent: " + cparent + " : " + psig);
+        
         System.out.println("  Groups: " + groups);
         for (Box box : groups)
         {
             BoxSignature sig = new BoxSignature(box);
+            pat.addGroupSignature(sig);
             System.out.println("    " + sig);
         }
+        patterns.add(pat);
     }
     
     /**
@@ -159,8 +217,8 @@ public class GroupByExampleOperator extends BaseOperator
             Box anc = getAncestorWithParent(box, parent);
             if (anc != null)
                 ret.add(anc);
-            else
-                log.error("Couldn't find ancestor for {} with parent {}", box, parent);
+            /*else
+                log.error("Couldn't find ancestor for {} with parent {}", box, parent);*/
         }
         return ret;
     }
