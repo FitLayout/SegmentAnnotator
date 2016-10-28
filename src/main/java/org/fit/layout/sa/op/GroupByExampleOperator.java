@@ -100,37 +100,46 @@ public class GroupByExampleOperator extends BaseOperator
     
     private void recursiveScanAreaTree(Area root)
     {
-        AreaPattern pat = findMatch(root);
-        if (pat != null)
-            System.out.println("MATCH start: " + root + " matches " + pat);
-        
-        for (Area child : root.getChildAreas())
-            recursiveScanAreaTree(child);
-    }
-    
-    private AreaPattern findMatch(Area area)
-    {
-        if (!area.getBoxes().isEmpty())
+        if (root.getChildCount() == 0) //consider the leaf areas only
         {
-            Box box = area.getBoxes().firstElement();
-            if (box.getParentBox() != null)
+            for (Box box : root.getBoxes())
             {
-                Box parent = box.getParentBox();
-                for (AreaPattern pat : patterns)
-                {
-                    if (pat.matchesRoot(parent))
-                    {
-                        if (pat.matchesStart(box))
-                            return pat;
-                    }
-                }
-                return null; //no pattern matched
+                recursiveScanBoxTree(box);
             }
-            else
-                return null;
         }
         else
-            return null; //no boxes in this area
+        {
+            for (Area child : root.getChildAreas())
+                recursiveScanAreaTree(child);
+        }
+    }
+
+    private void recursiveScanBoxTree(Box box)
+    {
+        AreaPattern pat = findMatch(box);
+        if (pat != null)
+            System.out.println("MATCH start: " + box + " matches " + pat);
+        if (box.getParentBox() != null)
+            recursiveScanBoxTree(box.getParentBox());
+    }
+    
+    private AreaPattern findMatch(Box box)
+    {
+        if (box.getParentBox() != null)
+        {
+            Box parent = box.getParentBox();
+            for (AreaPattern pat : patterns)
+            {
+                if (pat.matchesRoot(parent))
+                {
+                    if (pat.matchesStart(box))
+                        return pat;
+                }
+            }
+            return null; //no pattern matched
+        }
+        else
+            return null;
     }
     
     //==============================================================================
