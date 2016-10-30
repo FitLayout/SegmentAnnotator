@@ -7,6 +7,7 @@ package org.fit.layout.sa.op;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -93,37 +94,115 @@ public class GroupByExampleOperator extends BaseOperator
     @Override
     public void apply(AreaTree atree, Area root)
     {
-        recursiveScanAreaTree(root);
+        List<Area> leaves = new ArrayList<>();
+        findLeafAreas(root, leaves);
+        scanForMatches(leaves);
     }
     
     //==============================================================================
     
-    private void recursiveScanAreaTree(Area root)
+    /**
+     * Scans the area tree and fills {@code leafBoxes} with all the boxes that correspond
+     * to the leaf areas of the area tree.
+     * @param root
+     */
+    private void scanForMatches(List<Area> leaves)
     {
-        if (root.getChildCount() == 0) //consider the leaf areas only
+        int mode = 0;
+        PatternMatch match = null;
+        Area area = null; 
+        Iterator<Area> it = leaves.iterator();
+        while (it.hasNext())
         {
-            for (Box box : root.getBoxes())
+            if (area == null)
+                area = (Area) it.next();
+            for (Box box : area.getBoxes())
             {
-                recursiveScanBoxTree(box);
+                switch (mode)
+                {
+                    case 0: //scan for start node
+                        match = recursiveScanBoxTree(box, true);
+                        if (match != null)
+                        {
+                            System.out.println("MATCH start: " + box + " matches " + match.getPattern());
+                            mode = 1;
+                        }
+                        area = null; //read next
+                        break;
+                    case 1: //skip nodes with matched parent
+                        if (!isAncestorOrSelf(match.getBox(), box))
+                        { //out of the matched subtree
+                            if (match.getPattern().getGroupCount() == 1)
+                                mode = 0; //a single group, match finished
+                            else
+                                mode = 2; //find the end match
+                        }
+                        else
+                        {
+                            System.out.println("Skipping " + area);
+                            area = null;
+                        }
+                        break;
+                    case 2: //scan for end node
+                        PatternMatch endmatch = recursiveScanBoxTree(box, false, match.getPattern());
+                        if (endmatch != null)
+                        {
+                            System.out.println("MATCH end: " + box + " matches " + match.getPattern());
+                            match = endmatch;
+                            mode = 3;
+                        }
+                        area = null; //read next
+                        break;
+                    case 3: //skip nodes with matched ending parent
+                        if (!isAncestorOrSelf(match.getBox(), box))
+                        { //out of the matched subtree
+                            mode = 0;
+                        }
+                        else
+                        {
+                            System.out.println("Skipping at end " + area);
+                            area = null;
+                        }
+                        break;
+                        
+                }
             }
-        }
-        else
-        {
-            for (Area child : root.getChildAreas())
-                recursiveScanAreaTree(child);
         }
     }
 
-    private void recursiveScanBoxTree(Box box)
+    private PatternMatch recursiveScanBoxTree(Box box, boolean start)
     {
-        AreaPattern pat = findMatch(box);
+        AreaPattern pat = findMatch(box, start);
         if (pat != null)
-            System.out.println("MATCH start: " + box + " matches " + pat);
-        if (box.getParentBox() != null)
-            recursiveScanBoxTree(box.getParentBox());
+        {
+            return new PatternMatch(pat, box);
+        }
+        else
+        {
+            if (box.getParentBox() != null)
+                return recursiveScanBoxTree(box.getParentBox(), start);
+            else
+                return null;
+        }
     }
     
-    private AreaPattern findMatch(Box box)
+    private PatternMatch recursiveScanBoxTree(Box box, boolean start, AreaPattern pattern)
+    {
+        AreaPattern pat = findMatch(box, start, pattern);
+        if (pat != null)
+        {
+            return new PatternMatch(pat, box);
+        }
+        else
+        {
+            if (box.getParentBox() != null)
+                return recursiveScanBoxTree(box.getParentBox(), start);
+            else
+                return null;
+        }
+    }
+    
+    private AreaPattern findMatch(Box box, boolean start)
     {
         if (box.getParentBox() != null)
         {
@@ -132,7 +211,7 @@ public class GroupByExampleOperator extends BaseOperator
             {
                 if (pat.matchesRoot(parent))
                 {
-                    if (pat.matchesStart(box))
+                    if ((start && pat.matchesStart(box)) || (!start || pat.matchesEnd(box)))
                         return pat;
                 }
             }
@@ -140,6 +219,46 @@ public class GroupByExampleOperator extends BaseOperator
         }
         else
             return null;
+    }
+    
+    private AreaPattern findMatch(Box box, boolean start, AreaPattern pat)
+    {
+        if (box.getParentBox() != null)
+        {
+            Box parent = box.getParentBox();
+            if (pat.matchesRoot(parent))
+            {
+                if ((start && pat.matchesStart(box)) || (!start || pat.matchesEnd(box)))
+                    return pat;
+            }
+            return null;
+        }
+        else
+            return null;
+    }
+    
+    private void findLeafAreas(Area root, List<Area> leaves)
+    {
+        if (root.isLeaf())
+            leaves.add(root);
+        else
+        {
+            for (Area child : root.getChildAreas())
+                findLeafAreas(child, leaves);
+        }
+    }
+    
+    private boolean isAncestorOrSelf(Box anc, Box box)
+    {
+        Box cur = box;
+        while (cur != null)
+        {
+            if (cur == anc)
+                return true;
+            else
+                cur = cur.getParentBox();
+        }
+        return false;
     }
     
     //==============================================================================

@@ -42,18 +42,15 @@ public class AreaPattern
         return rootSignature;
     }
 
-
     public void setRootSignature(BoxSignature rootSignature)
     {
         this.rootSignature = rootSignature;
     }
 
-
     public List<BoxSignature> getGroupSignatures()
     {
         return groupSignatures;
     }
-
 
     public void setGroupSignatures(List<BoxSignature> groupSignatures)
     {
@@ -63,6 +60,11 @@ public class AreaPattern
     public void addGroupSignature(BoxSignature sig)
     {
         groupSignatures.add(sig);
+    }
+    
+    public int getGroupCount()
+    {
+        return groupSignatures.size();
     }
 
     public boolean matchesRoot(Box box)
@@ -91,5 +93,5 @@ public class AreaPattern
         else
             return false;
     }
-    
+
 }
