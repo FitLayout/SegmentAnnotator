@@ -15,6 +15,7 @@ import org.fit.layout.impl.BaseOperator;
 import org.fit.layout.model.Area;
 import org.fit.layout.model.AreaTree;
 import org.fit.layout.model.Box;
+import org.fit.layout.model.Rectangular;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +33,14 @@ public class GroupByExampleOperator extends BaseOperator
     private AreaTree exampleTree;
     private List<AreaPattern> patterns;
     
+    /** List of area groups that should form the new areas */
+    private List<List<Area>> groupsFound;
+    
     
     public GroupByExampleOperator()
     {
         patterns = new ArrayList<>();
+        groupsFound = new ArrayList<>();
     }
     
     @Override
@@ -94,9 +99,13 @@ public class GroupByExampleOperator extends BaseOperator
     @Override
     public void apply(AreaTree atree, Area root)
     {
+        groupsFound.clear();
         List<Area> leaves = new ArrayList<>();
         findLeafAreas(root, leaves);
         scanForMatches(leaves);
+        System.out.println("Found " + groupsFound.size() + " matches");
+        for (List<Area> group : groupsFound)
+            createSuperArea(group);
     }
     
     //==============================================================================
@@ -110,6 +119,7 @@ public class GroupByExampleOperator extends BaseOperator
     {
         int mode = 0;
         PatternMatch match = null;
+        List<Area> newgroup = null;
         Area area = null; 
         Iterator<Area> it = leaves.iterator();
         while (it.hasNext())
@@ -125,6 +135,8 @@ public class GroupByExampleOperator extends BaseOperator
                         if (match != null)
                         {
                             System.out.println("MATCH start: " + box + " matches " + match.getPattern());
+                            newgroup = new ArrayList<>();
+                            newgroup.add(area);
                             mode = 1;
                         }
                         area = null; //read next
@@ -133,13 +145,20 @@ public class GroupByExampleOperator extends BaseOperator
                         if (!isAncestorOrSelf(match.getBox(), box))
                         { //out of the matched subtree
                             if (match.getPattern().getGroupCount() == 1)
+                            {
                                 mode = 0; //a single group, match finished
+                                groupsFound.add(newgroup);
+                                area = null;
+                            }
                             else
+                            {
                                 mode = 2; //find the end match
+                            }
                         }
                         else
                         {
                             System.out.println("Skipping " + area);
+                            newgroup.add(area);
                             area = null;
                         }
                         break;
@@ -148,19 +167,31 @@ public class GroupByExampleOperator extends BaseOperator
                         if (endmatch != null)
                         {
                             System.out.println("MATCH end: " + box + " matches " + match.getPattern());
-                            match = endmatch;
+                            newgroup.add(area);
                             mode = 3;
+                        }
+                        else
+                        {
+                            newgroup.add(area); //just add to the current group
+                            if (newgroup.size() > match.getPattern().getGroupCount() * 2)
+                            {
+                                log.error("Couldn't find end match for {} within a limit, giving up", match);
+                                newgroup = null;
+                                mode = 0;
+                            }
                         }
                         area = null; //read next
                         break;
                     case 3: //skip nodes with matched ending parent
                         if (!isAncestorOrSelf(match.getBox(), box))
                         { //out of the matched subtree
+                            groupsFound.add(newgroup);
                             mode = 0;
                         }
                         else
                         {
                             System.out.println("Skipping at end " + area);
+                            newgroup.add(area);
                             area = null;
                         }
                         break;
@@ -211,7 +242,7 @@ public class GroupByExampleOperator extends BaseOperator
             {
                 if (pat.matchesRoot(parent))
                 {
-                    if ((start && pat.matchesStart(box)) || (!start || pat.matchesEnd(box)))
+                    if ((start && pat.matchesStart(box)) || (!start && pat.matchesEnd(box)))
                         return pat;
                 }
             }
@@ -259,6 +290,28 @@ public class GroupByExampleOperator extends BaseOperator
                 cur = cur.getParentBox();
         }
         return false;
+    }
+    
+    //==============================================================================
+    
+    private void createSuperArea(List<Area> group)
+    {
+        if (group.size() > 0 && group.get(0).getParentArea() != null)
+        {
+            Area parent = group.get(0).getParentArea();
+            //compute the bounds
+            Rectangular gp = null;
+            for (Area area : group)
+            {
+                Rectangular agp = parent.getTopology().getPosition(area);
+                if (gp == null)
+                    gp = new Rectangular(agp);
+                else
+                    gp.expandToEnclose(agp);
+            }
+            //create the super area
+            parent.createSuperArea(gp, group, "area");
+        }        
     }
     
     //==============================================================================
