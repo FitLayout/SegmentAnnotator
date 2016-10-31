@@ -148,7 +148,6 @@ public class GroupByExampleOperator extends BaseOperator
                             {
                                 mode = 0; //a single group, match finished
                                 groupsFound.add(newgroup);
-                                area = null;
                             }
                             else
                             {
@@ -195,7 +194,6 @@ public class GroupByExampleOperator extends BaseOperator
                             area = null;
                         }
                         break;
-                        
                 }
             }
         }
@@ -310,7 +308,7 @@ public class GroupByExampleOperator extends BaseOperator
                     gp.expandToEnclose(agp);
             }
             //create the super area
-            parent.createSuperArea(gp, group, "area");
+            parent.createSuperArea(gp, group, "<area>");
         }        
     }
     

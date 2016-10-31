@@ -65,7 +65,7 @@ public class BoxSignature
     public boolean matches(BoxSignature sig)
     {
         return boxMatches(sig.boxName, sig.boxId, sig.boxClass)
-                && sig.boxIndex == boxIndex
+                //&& sig.boxIndex == boxIndex
                 && parentsMatch(sig.pBlock, sig.pId, sig.pClass)
                 && (sig.pBlock == null || sig.pBlockIndex == pBlockIndex)
                 && (sig.pClass == null || sig.pClassIndex == pClassIndex);
