@@ -302,10 +302,15 @@ public class GroupByExampleOperator extends BaseOperator
             for (Area area : group)
             {
                 Rectangular agp = parent.getTopology().getPosition(area);
-                if (gp == null)
-                    gp = new Rectangular(agp);
+                if (agp != null)
+                {
+                    if (gp == null)
+                        gp = new Rectangular(agp);
+                    else
+                        gp.expandToEnclose(agp);
+                }
                 else
-                    gp.expandToEnclose(agp);
+                    log.error("Couldn't create super area for {} because of a different parent. The tree should be flattened before applying the GroupByExample operator", area);
             }
             //create the super area
             parent.createSuperArea(gp, group, "<area>");
