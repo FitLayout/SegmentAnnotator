@@ -41,4 +41,11 @@ public class PatternMatch
     {
         this.box = box;
     }
+
+    @Override
+    public String toString()
+    {
+        return "{" + box.toString() + " matches " + pattern.toString() + "}";
+    }
+    
 }

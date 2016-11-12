@@ -119,6 +119,7 @@ public class GroupByExampleOperator extends BaseOperator
     {
         int mode = 0;
         PatternMatch match = null;
+        PatternMatch endmatch = null;
         List<Area> newgroup = null;
         Area area = null; 
         Iterator<Area> it = leaves.iterator();
@@ -162,14 +163,15 @@ public class GroupByExampleOperator extends BaseOperator
                         }
                         break;
                     case 2: //scan for end node
-                        PatternMatch endmatch = recursiveScanBoxTree(box, false, match.getPattern());
+                        System.out.println("Test: " + box);
+                        endmatch = recursiveScanBoxTree(box, false, match.getPattern());
                         if (endmatch != null)
                         {
                             System.out.println("MATCH end: " + box + " matches " + match.getPattern());
                             newgroup.add(area);
                             mode = 3;
                         }
-                        else
+                        /*else TODO
                         {
                             newgroup.add(area); //just add to the current group
                             if (newgroup.size() > match.getPattern().getGroupCount() * 2)
@@ -178,11 +180,11 @@ public class GroupByExampleOperator extends BaseOperator
                                 newgroup = null;
                                 mode = 0;
                             }
-                        }
+                        }*/
                         area = null; //read next
                         break;
                     case 3: //skip nodes with matched ending parent
-                        if (!isAncestorOrSelf(match.getBox(), box))
+                        if (!isAncestorOrSelf(endmatch.getBox(), box))
                         { //out of the matched subtree
                             groupsFound.add(newgroup);
                             mode = 0;
@@ -333,7 +335,7 @@ public class GroupByExampleOperator extends BaseOperator
         
         List<Box> boxes = area.getAllBoxes();
         Box cparent = getCommonAncestor(boxes);
-        List<Box> groups = getGroupCommonAncestors(boxes, cparent);
+        List<Box> groups = getGroupCommonAncestors(boxes, cparent, area);
         
         if (groups.isEmpty() && cparent.getParentBox() != null)
         {
@@ -388,17 +390,18 @@ public class GroupByExampleOperator extends BaseOperator
     }
     
     /**
-     * Obtains all the ancestor of the given boxes that are the child nodes of the given parent.
+     * Obtains all the ancestor of the given boxes that are the descendant nodes of the given parent and
+     * are fully contained in a given area.
      * @param boxes
      * @param parent
      * @return
      */
-    private List<Box> getGroupCommonAncestors(List<Box> boxes, Box parent)
+    private List<Box> getGroupCommonAncestors(List<Box> boxes, Box parent, Area area)
     {
         List<Box> ret = new ArrayList<>();
         for (Box box : boxes)
         {
-            Box anc = getAncestorWithParent(box, parent);
+            Box anc = getAncestorUntilParent(box, parent, area);
             if (anc != null)
                 ret.add(anc);
             /*else
@@ -431,13 +434,21 @@ public class GroupByExampleOperator extends BaseOperator
      * @param parent
      * @return The ancestor found or {@code null} when no such node may be found.
      */
-    private Box getAncestorWithParent(Box box, Box parent)
+    private Box getAncestorUntilParent(Box box, Box parent, Area area)
     {
+        Rectangular ab = area.getBounds();
         Box cur = box;
         do
         {
-            if (cur.getParentBox() == parent)
-                return cur;
+            Box cparent = cur.getParentBox();
+            if (cparent == parent) 
+                return cur; //stop on the given parent
+            else
+            {
+                Rectangular pb = cparent.getVisualBounds();
+                if (!ab.encloses(pb))
+                    return cur; //stop because the parent box does not fit to the area
+            }
             cur = cur.getParentBox();
         } while (cur != null);
         return null; //nothing found
