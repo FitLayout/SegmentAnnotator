@@ -129,6 +129,7 @@ public class GroupByExampleOperator extends BaseOperator
                 area = (Area) it.next();
             for (Box box : area.getBoxes())
             {
+                System.out.println("(" + mode + ") " + box);
                 switch (mode)
                 {
                     case 0: //scan for start node
@@ -163,11 +164,11 @@ public class GroupByExampleOperator extends BaseOperator
                         }
                         break;
                     case 2: //scan for end node
-                        System.out.println("Test: " + box);
                         endmatch = recursiveScanBoxTree(box, false, match.getPattern());
                         if (endmatch != null)
                         {
                             System.out.println("MATCH end: " + box + " matches " + match.getPattern());
+                            System.out.println("  endmatch: " + endmatch);
                             newgroup.add(area);
                             mode = 3;
                         }
@@ -227,7 +228,7 @@ public class GroupByExampleOperator extends BaseOperator
         else
         {
             if (box.getParentBox() != null)
-                return recursiveScanBoxTree(box.getParentBox(), start);
+                return recursiveScanBoxTree(box.getParentBox(), start, pattern);
             else
                 return null;
         }
@@ -237,10 +238,9 @@ public class GroupByExampleOperator extends BaseOperator
     {
         if (box.getParentBox() != null)
         {
-            Box parent = box.getParentBox();
             for (AreaPattern pat : patterns)
             {
-                if (pat.matchesRoot(parent))
+                if (findRootMatch(box, pat) != null)
                 {
                     if ((start && pat.matchesStart(box)) || (!start && pat.matchesEnd(box)))
                         return pat;
@@ -256,16 +256,27 @@ public class GroupByExampleOperator extends BaseOperator
     {
         if (box.getParentBox() != null)
         {
-            Box parent = box.getParentBox();
-            if (pat.matchesRoot(parent))
+            if (findRootMatch(box, pat) != null)
             {
-                if ((start && pat.matchesStart(box)) || (!start || pat.matchesEnd(box)))
+                if ((start && pat.matchesStart(box)) || (!start && pat.matchesEnd(box)))
                     return pat;
             }
             return null;
         }
         else
             return null;
+    }
+    
+    private Box findRootMatch(Box box, AreaPattern pat)
+    {
+        Box cur = box;
+        while (cur.getParentBox() != null)
+        {
+            cur = cur.getParentBox();
+            if (pat.matchesRoot(cur))
+                return cur;
+        }
+        return null;
     }
     
     private void findLeafAreas(Area root, List<Area> leaves)
@@ -337,10 +348,12 @@ public class GroupByExampleOperator extends BaseOperator
         Box cparent = getCommonAncestor(boxes);
         List<Box> groups = getGroupCommonAncestors(boxes, cparent, area);
         
-        if (groups.isEmpty() && cparent.getParentBox() != null)
+        if ((groups.isEmpty() || (groups.size() == 1 && groups.get(0) == cparent))
+                && cparent.getParentBox() != null)
         {
             //if there are no groups, we probably take the whole subtree. The parent is then one level up.
-            groups.add(cparent);
+            if (groups.isEmpty())
+                groups.add(cparent);
             cparent = cparent.getParentBox();
         }
         
