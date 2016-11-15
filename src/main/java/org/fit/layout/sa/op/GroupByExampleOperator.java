@@ -150,6 +150,7 @@ public class GroupByExampleOperator extends BaseOperator
                             {
                                 mode = 0; //a single group, match finished
                                 groupsFound.add(newgroup);
+                                newgroup = new ArrayList<>();
                             }
                             else
                             {
@@ -172,22 +173,23 @@ public class GroupByExampleOperator extends BaseOperator
                             newgroup.add(area);
                             mode = 3;
                         }
-                        /*else TODO
+                        else
                         {
                             newgroup.add(area); //just add to the current group
-                            if (newgroup.size() > match.getPattern().getGroupCount() * 2)
+                            /*if (newgroup.size() > match.getPattern().getGroupCount() * 2)
                             {
                                 log.error("Couldn't find end match for {} within a limit, giving up", match);
                                 newgroup = null;
                                 mode = 0;
-                            }
-                        }*/
+                            }*/
+                        }
                         area = null; //read next
                         break;
                     case 3: //skip nodes with matched ending parent
                         if (!isAncestorOrSelf(endmatch.getBox(), box))
                         { //out of the matched subtree
                             groupsFound.add(newgroup);
+                            newgroup = new ArrayList<>();
                             mode = 0;
                         }
                         else
@@ -200,6 +202,8 @@ public class GroupByExampleOperator extends BaseOperator
                 }
             }
         }
+        if (newgroup != null && !newgroup.isEmpty())
+            groupsFound.add(newgroup);
     }
 
     private PatternMatch recursiveScanBoxTree(Box box, boolean start)
