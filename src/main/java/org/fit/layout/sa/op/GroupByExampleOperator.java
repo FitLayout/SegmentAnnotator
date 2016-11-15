@@ -175,7 +175,22 @@ public class GroupByExampleOperator extends BaseOperator
                         }
                         else
                         {
-                            newgroup.add(area); //just add to the current group
+                            //check if we are still at least in the required parent box
+                            if (findRootMatch(box, match.getPattern()) != null)
+                            {
+                                newgroup.add(area); //just add to the current group
+                            }
+                            else
+                            {
+                                System.out.println("Ran out of root, finishing group");
+                                if (!newgroup.isEmpty())
+                                {
+                                    groupsFound.add(newgroup);
+                                    newgroup = new ArrayList<>();
+                                    mode = 0;
+                                }
+                            }
+                                
                             /*if (newgroup.size() > match.getPattern().getGroupCount() * 2)
                             {
                                 log.error("Couldn't find end match for {} within a limit, giving up", match);
