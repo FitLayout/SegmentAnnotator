@@ -266,7 +266,6 @@ public class AnnotatorPlugin implements BrowserPlugin, RectangleSelectionListene
         System.out.println("Boxes: " + boxes);
         for (Box box : boxes)
         {
-            Rectangular vb = box.getVisualBounds();
             if (box.isVisible())
             {
                 if (r == null)
