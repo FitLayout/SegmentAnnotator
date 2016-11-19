@@ -102,8 +102,9 @@ public class GroupByExampleOperator extends BaseOperator
         groupsFound.clear();
         List<Area> leaves = new ArrayList<>();
         findLeafAreas(root, leaves);
-        scanForMatches(leaves);
+        scanForMatches(atree, leaves);
         System.out.println("Found " + groupsFound.size() + " matches");
+        root.updateTopologies();
         for (List<Area> group : groupsFound)
             createSuperArea(group);
     }
@@ -115,12 +116,13 @@ public class GroupByExampleOperator extends BaseOperator
      * to the leaf areas of the area tree.
      * @param root
      */
-    private void scanForMatches(List<Area> leaves)
+    private void scanForMatches(AreaTree atree, List<Area> leaves)
     {
         int mode = 0;
         PatternMatch match = null;
         PatternMatch endmatch = null;
         List<Area> newgroup = null;
+        Area newparent = null;
         Area area = null; 
         Iterator<Area> it = leaves.iterator();
         while (it.hasNext())
@@ -137,8 +139,16 @@ public class GroupByExampleOperator extends BaseOperator
                         if (match != null)
                         {
                             System.out.println("MATCH start: " + box + " matches " + match.getPattern());
+                            
+                            Area oldparent = area.getParentArea();
+                            newparent = atree.createArea(match.getBox());
+                            newparent.setName("<area>");
+                            newparent.appendChild(area);
+                            oldparent.appendChild(newparent);
+                            
                             newgroup = new ArrayList<>();
-                            newgroup.add(area);
+                            newgroup.add(newparent);
+                            
                             mode = 1;
                         }
                         area = null; //read next
@@ -160,7 +170,7 @@ public class GroupByExampleOperator extends BaseOperator
                         else
                         {
                             System.out.println("Skipping " + area);
-                            newgroup.add(area);
+                            newparent.appendChild(area);
                             area = null;
                         }
                         break;
@@ -170,7 +180,12 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             System.out.println("MATCH end: " + box + " matches " + match.getPattern());
                             System.out.println("  endmatch: " + endmatch);
-                            newgroup.add(area);
+                            Area oldparent = area.getParentArea();
+                            newparent = atree.createArea(endmatch.getBox());
+                            newparent.setName("<area>");
+                            newparent.appendChild(area);
+                            oldparent.appendChild(newparent);
+                            newgroup.add(newparent);
                             mode = 3;
                         }
                         else
@@ -210,7 +225,7 @@ public class GroupByExampleOperator extends BaseOperator
                         else
                         {
                             System.out.println("Skipping at end " + area);
-                            newgroup.add(area);
+                            newparent.appendChild(area);
                             area = null;
                         }
                         break;
@@ -326,7 +341,7 @@ public class GroupByExampleOperator extends BaseOperator
     
     private void createSuperArea(List<Area> group)
     {
-        if (group.size() > 0 && group.get(0).getParentArea() != null)
+        if (group.size() > 1 && group.get(0).getParentArea() != null)
         {
             Area parent = group.get(0).getParentArea();
             //compute the bounds
