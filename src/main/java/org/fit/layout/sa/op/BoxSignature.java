@@ -71,6 +71,52 @@ public class BoxSignature
                 && (sig.pClass == null || sig.pClassIndex == pClassIndex);
     }
     
+    public boolean equalsExactly(BoxSignature other)
+    {
+        return 
+                equalsNoIndex(other)
+                && boxIndex == other.boxIndex;
+    }
+    
+    
+    public boolean equalsNoIndex(BoxSignature other)
+    {
+        if (boxClass == null)
+        {
+            if (other.boxClass != null) return false;
+        }
+        else if (!boxClass.equals(other.boxClass)) return false;
+        if (boxId == null)
+        {
+            if (other.boxId != null) return false;
+        }
+        else if (!boxId.equals(other.boxId)) return false;
+        //if (boxIndex != other.boxIndex) return false;
+        if (boxName == null)
+        {
+            if (other.boxName != null) return false;
+        }
+        else if (!boxName.equals(other.boxName)) return false;
+        if (pBlock == null)
+        {
+            if (other.pBlock != null) return false;
+        }
+        else if (!pBlock.equals(other.pBlock)) return false;
+        if (pBlockIndex != other.pBlockIndex) return false;
+        if (pClass == null)
+        {
+            if (other.pClass != null) return false;
+        }
+        else if (!pClass.equals(other.pClass)) return false;
+        if (pClassIndex != other.pClassIndex) return false;
+        if (pId == null)
+        {
+            if (other.pId != null) return false;
+        }
+        else if (!pId.equals(other.pId)) return false;
+        return true;
+    }
+
     //================================================================================================================
     
     private void computeSignature(Box src)
@@ -185,4 +231,7 @@ public class BoxSignature
         return ret;
     }
 
+    //================================================================================================================
+    
+    
 }

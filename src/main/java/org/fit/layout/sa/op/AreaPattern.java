@@ -94,4 +94,27 @@ public class AreaPattern
             return false;
     }
 
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj instanceof AreaPattern)
+        {
+            AreaPattern other = (AreaPattern) obj;
+            if (!rootSignature.equalsExactly(other.rootSignature))
+                return false;
+            if (groupSignatures.size() != other.groupSignatures.size())
+                return false;
+            for (int i = 0; i < groupSignatures.size(); i++)
+            {
+                BoxSignature s1 = groupSignatures.get(i);
+                BoxSignature s2 = other.groupSignatures.get(i);
+                if (!s1.equalsNoIndex(s2))
+                    return false;
+            }
+            return true;
+        }
+        else
+            return false;
+    }
+    
 }
