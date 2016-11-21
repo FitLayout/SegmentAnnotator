@@ -7,11 +7,9 @@ package org.fit.layout.sa.op;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.fit.layout.impl.BaseOperator;
@@ -106,11 +104,9 @@ public class GroupByExampleOperator extends BaseOperator
         List<Area> leaves = new ArrayList<>();
         findLeafAreas(root, leaves);
         
-        //ScanConfig cnf = new ScanConfig(100, 20);
-        //int x = doScan(atree, leaves);
-        //System.out.println("#VALID " + x);
+        int cnf = doScan(atree, leaves);
         
-        scanForMatches(atree, leaves, 1, groupsFound, false);
+        scanForMatches(atree, leaves, cnf, groupsFound, false);
         System.out.println("Found " + groupsFound.size() + " matches");
         root.updateTopologies();
         for (List<Area> group : groupsFound)
@@ -124,16 +120,19 @@ public class GroupByExampleOperator extends BaseOperator
         int cnt = 0;
         for (int i = 0; i < 100; i++)
         {
-            List<List<Area>> dest = null;//new ArrayList<>();
+            List<List<Area>> dest = new ArrayList<>();
             List<PatternMatch> matches = scanForMatches(atree, leaves, i, dest, true);
-            if (!matches.isEmpty())
+            if (matches != null && !matches.isEmpty())
             {
                 cnt++;
-                //System.out.println(cnt + " #matches " + matches.size());
+                System.out.println(cnt + " VALID CONF #" + i + " matches=" + matches.size());
                 System.out.println(matches);
+                return i;
             }
+            else
+                System.out.println("INVALID CONF #" + i);
         }
-        return cnt;
+        return 0;
     }
     
     /**
@@ -150,8 +149,8 @@ public class GroupByExampleOperator extends BaseOperator
         PatternMatch match = null;
         PatternMatch endmatch = null;
         List<Area> newgroup = null;
-        Area newparent = null;
-        Area area = null; 
+        //Area newparent = null;
+        Area area = null; //current area
         Iterator<Area> it = leaves.iterator();
         while (it.hasNext())
         {
@@ -172,13 +171,13 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             int pi = config % matches.size();
                             config = config / matches.size();
-                            System.out.println(pi + " out of " + matches.size());
+                            /*System.out.println(pi + " out of " + matches.size());
                             if (matches.size() > 1)
                             {
                                 System.out.println("BOX: " + box);
                                 for (int ii = 0; ii < matches.size(); ii++)
                                     System.out.println("  " + matches.get(ii));
-                            }
+                            }*/
                             match = matches.get(pi);
                             ret.add(match);
                         }
@@ -186,18 +185,25 @@ public class GroupByExampleOperator extends BaseOperator
                         if (match != null)
                         {
                             //System.out.println("MATCH start: " + box + " matches " + match.getPattern());
-                            
-                            if (!trial)
+
+                            //create a new group
+                            newgroup = new ArrayList<>();
+                            //create a new parent area when necessary
+                            if (match.getBox() != box)
                             {
-                                Area oldparent = area.getParentArea();
-                                newparent = atree.createArea(match.getBox());
-                                newparent.setName("<area>");
-                                newparent.appendChild(area);
-                                oldparent.appendChild(newparent);
-                                
-                                newgroup = new ArrayList<>();
-                                newgroup.add(newparent);
+                                Area matcharea = atree.createArea(match.getBox());
+                                newgroup.add(matcharea);
+                                if (!trial)
+                                {
+                                    //matcharea.setName("<area>");
+                                    //replace the area with the matching one
+                                    Area parent = area.getParentArea();
+                                    parent.appendChild(matcharea);
+                                    parent.removeChild(area);
+                                }
                             }
+                            else
+                                newgroup.add(area);
                             
                             mode = 1;
                         }
@@ -209,8 +215,7 @@ public class GroupByExampleOperator extends BaseOperator
                             if (match.getPattern().getGroupCount() == 1)
                             {
                                 mode = 0; //a single group, match finished
-                                if (!trial)
-                                    dest.add(newgroup);
+                                dest.add(newgroup);
                                 newgroup = new ArrayList<>();
                             }
                             else
@@ -222,7 +227,7 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             //System.out.println("Skipping " + area);
                             if (!trial)
-                                newparent.appendChild(area);
+                                area.getParentArea().removeChild(area);
                             area = null;
                         }
                         break;
@@ -232,15 +237,21 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             //System.out.println("MATCH end: " + box + " matches " + match.getPattern());
                             //System.out.println("  endmatch: " + endmatch);
-                            if (!trial)
+                            if (endmatch.getBox() != box)
                             {
-                                Area oldparent = area.getParentArea();
-                                newparent = atree.createArea(endmatch.getBox());
-                                newparent.setName("<area>");
-                                newparent.appendChild(area);
-                                oldparent.appendChild(newparent);
-                                newgroup.add(newparent);
+                                Area matcharea = atree.createArea(endmatch.getBox());
+                                newgroup.add(matcharea);
+                                if (!trial)
+                                {
+                                    //matcharea.setName("<area>");
+                                    Area oldparent = area.getParentArea();
+                                    oldparent.appendChild(matcharea);
+                                    oldparent.removeChild(area);
+                                }
                             }
+                            else
+                                newgroup.add(area);
+                            
                             mode = 3;
                         }
                         else
@@ -248,19 +259,15 @@ public class GroupByExampleOperator extends BaseOperator
                             //check if we are still at least in the required parent box
                             if (findRootMatch(box, match.getPattern()) != null)
                             {
-                                if (!trial)
-                                    newgroup.add(area); //just add to the current group
+                                newgroup.add(area); //just add to the current group
                             }
                             else
                             {
                                 //System.out.println("Ran out of root, finishing group");
                                 if (!newgroup.isEmpty())
                                 {
-                                    if (!trial)
-                                    {
-                                        dest.add(newgroup);
-                                        newgroup = new ArrayList<>();
-                                    }
+                                    dest.add(newgroup);
+                                    newgroup = new ArrayList<>();
                                     mode = 0;
                                 }
                             }
@@ -270,28 +277,32 @@ public class GroupByExampleOperator extends BaseOperator
                     case 3: //skip nodes with matched ending parent
                         if (!isAncestorOrSelf(endmatch.getBox(), box))
                         { //out of the matched subtree
-                            if (!trial)
-                            {
-                                dest.add(newgroup);
-                                newgroup = new ArrayList<>();
-                            }
+                            dest.add(newgroup);
+                            newgroup = new ArrayList<>();
                             mode = 0;
                         }
                         else
                         {
                             //System.out.println("Skipping at end " + area);
                             if (!trial)
-                                newparent.appendChild(area);
+                                area.getParentArea().removeChild(area);
                             area = null;
                         }
                         break;
                 }
             }
         }
-        if (!trial)
+        if (newgroup != null && !newgroup.isEmpty())
+            dest.add(newgroup);
+        
+        //trial run, check if the areas are overlapping
+        if (trial)
         {
-            if (newgroup != null && !newgroup.isEmpty())
-                dest.add(newgroup);
+            List<Rectangular> groups = new ArrayList<>(dest.size());
+            for (List<Area> group : dest)
+                groups.add(computeGroupBounds(group));
+            if (checkOverlaps(groups))
+                return null; //areas are overlapping invalidate the result
         }
         return ret;
     }
@@ -345,7 +356,7 @@ public class GroupByExampleOperator extends BaseOperator
             List<AreaPattern> ret = new ArrayList<>();
             for (AreaPattern pat : patterns)
             {
-                if (box.toString().contains("He has served") && pat.toString().contains("unknown:1"))
+                if (box.toString().contains("He has served") && pat.toString().contains("<:1>"))
                     System.out.println("he?");
                 if (findRootMatch(box, pat) != null)
                 {
@@ -438,31 +449,72 @@ public class GroupByExampleOperator extends BaseOperator
         return false;
     }
     
+    private boolean checkOverlaps(List<Rectangular> list)
+    {
+        for (Rectangular r1 : list)
+        {
+            for (Rectangular r2 : list)
+            {
+                if (r1 != r2 && r1.intersects(r2))
+                {
+                    System.out.println("OVERLAP " + r1 + " x " + r2);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
     //==============================================================================
     
     private void createSuperArea(List<Area> group)
     {
-        if (group.size() > 1 && group.get(0).getParentArea() != null)
+        if (group.get(0).getParentArea() != null)
         {
-            Area parent = group.get(0).getParentArea();
-            //compute the bounds
-            Rectangular gp = null;
-            for (Area area : group)
+            if (group.size() > 1)
             {
-                Rectangular agp = parent.getTopology().getPosition(area);
-                if (agp != null)
-                {
-                    if (gp == null)
-                        gp = new Rectangular(agp);
-                    else
-                        gp.expandToEnclose(agp);
-                }
-                else
-                    log.error("Couldn't create super area for {} because of a different parent. The tree should be flattened before applying the GroupByExample operator", area);
+                Area parent = group.get(0).getParentArea();
+                //compute the bounds
+                Rectangular gp = computeGroupGP(parent, group);
+                //create the super area
+                parent.createSuperArea(gp, group, "<area>");
             }
-            //create the super area
-            parent.createSuperArea(gp, group, "<area>");
-        }        
+            else
+                group.get(0).setName("<area>"); //one-member group
+        }
+    }
+    
+    private Rectangular computeGroupGP(Area parent, List<Area> group)
+    {
+        Rectangular gp = null;
+        for (Area area : group)
+        {
+            Rectangular agp = parent.getTopology().getPosition(area);
+            if (agp != null)
+            {
+                if (gp == null)
+                    gp = new Rectangular(agp);
+                else
+                    gp.expandToEnclose(agp);
+            }
+            else
+                log.error("Couldn't create super area for {} because of a different parent. The tree should be flattened before applying the GroupByExample operator", area);
+        }
+        return gp;
+    }
+    
+    private Rectangular computeGroupBounds(List<Area> group)
+    {
+        Rectangular ret = null;
+        for (Area area : group)
+        {
+            Rectangular agp = area.getBounds();
+            if (ret == null)
+                ret = new Rectangular(agp);
+            else
+                ret.expandToEnclose(agp);
+        }
+        return ret;
     }
     
     //==============================================================================
@@ -478,6 +530,8 @@ public class GroupByExampleOperator extends BaseOperator
     private void analyzeArea(Area area)
     {
         System.out.println("Area: " + area);
+        if (area.toString().contains("footer"))
+            System.out.println("jo!");
         
         List<Box> boxes = area.getAllBoxes();
         Box cparent = getCommonAncestor(boxes);
