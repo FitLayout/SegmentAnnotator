@@ -117,20 +117,18 @@ public class GroupByExampleOperator extends BaseOperator
     
     private int doScan(AreaTree atree, List<Area> leaves)
     {
-        int cnt = 0;
         for (int i = 0; i < 100; i++)
         {
             List<List<Area>> dest = new ArrayList<>();
             List<PatternMatch> matches = scanForMatches(atree, leaves, i, dest, true);
             if (matches != null && !matches.isEmpty())
             {
-                cnt++;
-                System.out.println(cnt + " VALID CONF #" + i + " matches=" + matches.size());
-                System.out.println(matches);
+                log.trace("#{} valid, {} matches", i, matches.size());
+                //System.out.println(matches);
                 return i;
             }
             else
-                System.out.println("INVALID CONF #" + i);
+                log.trace("#{} invalid (overlap)", i);
         }
         return 0;
     }
@@ -356,8 +354,8 @@ public class GroupByExampleOperator extends BaseOperator
             List<AreaPattern> ret = new ArrayList<>();
             for (AreaPattern pat : patterns)
             {
-                if (box.toString().contains("He has served") && pat.toString().contains("<:1>"))
-                    System.out.println("he?");
+                //if (box.toString().contains("He has served") && pat.toString().contains("<:1>"))
+                //    System.out.println("he?");
                 if (findRootMatch(box, pat) != null)
                 {
                     if ((start && pat.matchesStart(box)) || (!start && pat.matchesEnd(box)))
@@ -457,7 +455,7 @@ public class GroupByExampleOperator extends BaseOperator
             {
                 if (r1 != r2 && r1.intersects(r2))
                 {
-                    System.out.println("OVERLAP " + r1 + " x " + r2);
+                    log.trace("OVERLAP {} x {}", r1, r2);
                     return true;
                 }
             }
@@ -530,8 +528,6 @@ public class GroupByExampleOperator extends BaseOperator
     private void analyzeArea(Area area)
     {
         System.out.println("Area: " + area);
-        if (area.toString().contains("footer"))
-            System.out.println("jo!");
         
         List<Box> boxes = area.getAllBoxes();
         Box cparent = getCommonAncestor(boxes);
