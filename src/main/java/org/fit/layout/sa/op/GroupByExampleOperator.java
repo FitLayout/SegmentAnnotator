@@ -105,8 +105,14 @@ public class GroupByExampleOperator extends BaseOperator
         findLeafAreas(root, leaves);
         
         int cnf = doScan(atree, leaves);
+        //int cnf = 10;
         
-        scanForMatches(atree, leaves, cnf, groupsFound, false);
+        //first run - scan for start matches
+        List<List<Area>> trialDest = new ArrayList<>();
+        List<PatternMatch> matches = scanForMatches(atree, leaves, cnf, trialDest, true, null);
+        //second run - scan for end matches
+        scanForMatches(atree, leaves, cnf, groupsFound, false, matches);
+        
         System.out.println("Found " + groupsFound.size() + " matches");
         root.updateTopologies();
         for (List<Area> group : groupsFound)
@@ -119,8 +125,10 @@ public class GroupByExampleOperator extends BaseOperator
     {
         for (int i = 0; i < 100; i++)
         {
-            List<List<Area>> dest = new ArrayList<>();
-            List<PatternMatch> matches = scanForMatches(atree, leaves, i, dest, true);
+            List<List<Area>> dest1 = new ArrayList<>();
+            List<PatternMatch> pool = scanForMatches(atree, leaves, i, dest1, true, null);
+            List<List<Area>> dest2 = new ArrayList<>();
+            List<PatternMatch> matches = scanForMatches(atree, leaves, i, dest2, true, pool);
             if (matches != null && !matches.isEmpty())
             {
                 log.trace("#{} valid, {} matches", i, matches.size());
@@ -139,12 +147,15 @@ public class GroupByExampleOperator extends BaseOperator
      * @param root
      * @return true when the result for the given config is valid
      */
-    private List<PatternMatch> scanForMatches(AreaTree atree, List<Area> leaves, int config, List<List<Area>> dest, boolean trial)
+    private List<PatternMatch> scanForMatches(AreaTree atree, List<Area> leaves, int config, List<List<Area>> dest, boolean trial, List<PatternMatch> matchPool)
     {
         List<PatternMatch> ret = new ArrayList<>(20);
+        Iterator<PatternMatch> poolIt = null;
+        if (matchPool != null)
+            poolIt = matchPool.iterator();
         
         int mode = 0;
-        PatternMatch match = null;
+        PatternMatch curmatch = null;
         PatternMatch endmatch = null;
         List<Area> newgroup = null;
         //Area newparent = null;
@@ -163,9 +174,8 @@ public class GroupByExampleOperator extends BaseOperator
                         //find the match according to the config
                         List<PatternMatch> matches = new ArrayList<>(); 
                         recursiveFindAllMatches(box, true, matches);
-                        if (matches.isEmpty())
-                            match = null; //no match for this box, carry on
-                        else
+                        PatternMatch match = null;
+                        if (!matches.isEmpty())
                         {
                             int pi = config % matches.size();
                             config = config / matches.size();
@@ -176,7 +186,10 @@ public class GroupByExampleOperator extends BaseOperator
                                 for (int ii = 0; ii < matches.size(); ii++)
                                     System.out.println("  " + matches.get(ii));
                             }*/
-                            match = matches.get(pi);
+                            if (matchPool == null)
+                                match = matches.get(pi);
+                            else
+                                match = poolIt.next();
                             ret.add(match);
                         }
                         
@@ -203,14 +216,29 @@ public class GroupByExampleOperator extends BaseOperator
                             else
                                 newgroup.add(area);
                             
+                            curmatch = match;
                             mode = 1;
                         }
+                        else
+                        {
+                            //no new match -- track end matches of the previous match if any
+                            if (curmatch != null)
+                            {
+                                PatternMatch ematch = recursiveScanBoxTree(box, false, curmatch.getPattern());
+                                if (ematch != null)
+                                {
+                                    curmatch.getPairs().add(ematch);
+                                    //System.out.println("Additional end: " + box);
+                                }
+                            }
+                        }
+                        
                         area = null; //read next
                         break;
                     case 1: //skip nodes with matched parent
-                        if (!isAncestorOrSelf(match.getBox(), box))
+                        if (!isAncestorOrSelf(curmatch.getBox(), box))
                         { //out of the matched subtree
-                            if (match.getPattern().getGroupCount() == 1)
+                            if (curmatch.getPattern().getGroupCount() == 1)
                             {
                                 mode = 0; //a single group, match finished
                                 dest.add(newgroup);
@@ -230,11 +258,20 @@ public class GroupByExampleOperator extends BaseOperator
                         }
                         break;
                     case 2: //scan for end node
-                        endmatch = recursiveScanBoxTree(box, false, match.getPattern());
+                        endmatch = recursiveScanBoxTree(box, false, curmatch.getPattern());
+                        if (endmatch != null && matchPool != null)
+                        {
+                            //end matches from the pool - use only the last one
+                            if (endmatch.getBox() == curmatch.getLastPair().getBox())
+                                endmatch = curmatch.getLastPair();
+                            else
+                                endmatch = null;
+                        }
                         if (endmatch != null)
                         {
-                            //System.out.println("MATCH end: " + box + " matches " + match.getPattern());
+                            //System.out.println("MATCH end: " + box + " matches " + curmatch.getPattern());
                             //System.out.println("  endmatch: " + endmatch);
+                            curmatch.getPairs().add(endmatch);
                             if (endmatch.getBox() != box)
                             {
                                 Area matcharea = atree.createArea(endmatch.getBox());
@@ -255,7 +292,7 @@ public class GroupByExampleOperator extends BaseOperator
                         else
                         {
                             //check if we are still at least in the required parent box
-                            if (findRootMatch(box, match.getPattern()) != null)
+                            if (findRootMatch(box, curmatch.getPattern()) != null)
                             {
                                 newgroup.add(area); //just add to the current group
                             }
@@ -553,10 +590,19 @@ public class GroupByExampleOperator extends BaseOperator
             pat.addGroupSignature(sig);
             System.out.println("    " + sig);
         }
+        //get the font size of the first leaf box in the subtree
+        int fs = 0;
+        if (!boxes.isEmpty())
+            fs = AreaPattern.getStartingFontSize(boxes.get(0));
+        pat.setFontSize(fs);
+        System.out.println("  FS=" + fs);
+        //add to patterns if it's not new
         if (patterns.contains(pat))
             System.out.println("ALREADY THERE");
         else
             patterns.add(pat);
+        
+        
     }
     
     /**

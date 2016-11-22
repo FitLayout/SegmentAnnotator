@@ -18,6 +18,7 @@ public class AreaPattern
 {
     private BoxSignature rootSignature;
     private List<BoxSignature> groupSignatures;
+    private int fontSize;
     
     
     public AreaPattern(BoxSignature rootSignature)
@@ -34,9 +35,19 @@ public class AreaPattern
 
     public String toString()
     {
-        return rootSignature.toString() + groupSignatures.toString();
+        return "{" + fontSize + "}" + rootSignature.toString() + groupSignatures.toString();
     }
     
+    public int getFontSize()
+    {
+        return fontSize;
+    }
+
+    public void setFontSize(int fontSize)
+    {
+        this.fontSize = fontSize;
+    }
+
     public BoxSignature getRootSignature()
     {
         return rootSignature;
@@ -74,10 +85,15 @@ public class AreaPattern
     
     public boolean matchesStart(Box box)
     {
-        if (!groupSignatures.isEmpty())
+        if (fontSize ==  getStartingFontSize(box))
         {
-            BoxSignature sig = groupSignatures.get(0);
-            return sig.matches(box);
+            if (!groupSignatures.isEmpty())
+            {
+                BoxSignature sig = groupSignatures.get(0);
+                return sig.matches(box);
+            }
+            else
+                return false;
         }
         else
             return false;
@@ -100,6 +116,8 @@ public class AreaPattern
         if (obj instanceof AreaPattern)
         {
             AreaPattern other = (AreaPattern) obj;
+            if (fontSize != other.fontSize)
+                return false;
             if (!rootSignature.equalsExactly(other.rootSignature))
                 return false;
             if (groupSignatures.size() != other.groupSignatures.size())
@@ -116,5 +134,33 @@ public class AreaPattern
         else
             return false;
     }
+    
+    public static Box getFirstTextLeaf(Box root)
+    {
+        if (root.getChildCount() == 0)
+        {
+            if (root.getText().isEmpty())
+                return null;
+            else
+                return root;
+        }
+        else
+        {
+            for (int i = 0; i < root.getChildCount(); i++)
+            {
+                Box ret = getFirstTextLeaf(root.getChildBox(i));
+                if (ret != null)
+                    return ret;
+            }
+            return null;
+        }
+    }
+    
+    public static int getStartingFontSize(Box root)
+    {
+        Box leaf = getFirstTextLeaf(root);
+        return (leaf == null) ? 0 : Math.round(leaf.getFontSize());
+    }
+
     
 }
