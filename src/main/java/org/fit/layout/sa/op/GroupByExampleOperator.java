@@ -123,7 +123,7 @@ public class GroupByExampleOperator extends BaseOperator
     
     private int doScan(AreaTree atree, List<Area> leaves)
     {
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 50; i++)
         {
             List<List<Area>> dest1 = new ArrayList<>();
             List<PatternMatch> pool = scanForMatches(atree, leaves, i, dest1, true, null);
