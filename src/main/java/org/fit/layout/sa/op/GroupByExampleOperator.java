@@ -63,6 +63,12 @@ public class GroupByExampleOperator extends BaseOperator
     }
 
     @Override
+    public String getCategory()
+    {
+        return "restructure";
+    }
+
+    @Override
     public String[] getParamNames()
     {
         return paramNames;
