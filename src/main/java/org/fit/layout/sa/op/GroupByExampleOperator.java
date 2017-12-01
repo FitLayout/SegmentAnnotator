@@ -28,9 +28,6 @@ public class GroupByExampleOperator extends BaseOperator
 {
     private static Logger log = LoggerFactory.getLogger(GroupByExampleOperator.class);
 
-    protected final String[] paramNames = { };
-    protected final ValueType[] paramTypes = { };
-    
     private AreaTree exampleTree;
     private List<AreaPattern> patterns;
     
@@ -68,18 +65,6 @@ public class GroupByExampleOperator extends BaseOperator
         return "restructure";
     }
 
-    @Override
-    public String[] getParamNames()
-    {
-        return paramNames;
-    }
-
-    @Override
-    public ValueType[] getParamTypes()
-    {
-        return paramTypes;
-    }
-    
     //==============================================================================
     
     public AreaTree getExampleTree()
