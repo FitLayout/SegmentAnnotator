@@ -148,7 +148,7 @@ public class AreaPattern
         {
             for (int i = 0; i < root.getChildCount(); i++)
             {
-                Box ret = getFirstTextLeaf(root.getChildBox(i));
+                Box ret = getFirstTextLeaf(root.getChildAt(i));
                 if (ret != null)
                     return ret;
             }

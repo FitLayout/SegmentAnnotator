@@ -199,7 +199,7 @@ public class GroupByExampleOperator extends BaseOperator
                                 {
                                     //matcharea.setName("<area>");
                                     //replace the area with the matching one
-                                    Area parent = area.getParentArea();
+                                    Area parent = area.getParent();
                                     parent.appendChild(matcharea);
                                     parent.removeChild(area);
                                 }
@@ -244,7 +244,7 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             //System.out.println("Skipping " + area);
                             if (!trial)
-                                area.getParentArea().removeChild(area);
+                                area.getParent().removeChild(area);
                             area = null;
                         }
                         break;
@@ -270,7 +270,7 @@ public class GroupByExampleOperator extends BaseOperator
                                 if (!trial)
                                 {
                                     //matcharea.setName("<area>");
-                                    Area oldparent = area.getParentArea();
+                                    Area oldparent = area.getParent();
                                     oldparent.appendChild(matcharea);
                                     oldparent.removeChild(area);
                                 }
@@ -311,7 +311,7 @@ public class GroupByExampleOperator extends BaseOperator
                         {
                             //System.out.println("Skipping at end " + area);
                             if (!trial)
-                                area.getParentArea().removeChild(area);
+                                area.getParent().removeChild(area);
                             area = null;
                         }
                         break;
@@ -339,8 +339,8 @@ public class GroupByExampleOperator extends BaseOperator
         for (AreaPattern pat : list)
             dest.add(new PatternMatch(pat, box));
         
-        if (box.getParentBox() != null)
-            recursiveFindAllMatches(box.getParentBox(), start, dest);
+        if (box.getParent() != null)
+            recursiveFindAllMatches(box.getParent(), start, dest);
     }
     
     private PatternMatch recursiveScanBoxTree(Box box, boolean start)
@@ -352,8 +352,8 @@ public class GroupByExampleOperator extends BaseOperator
         }
         else
         {
-            if (box.getParentBox() != null)
-                return recursiveScanBoxTree(box.getParentBox(), start);
+            if (box.getParent() != null)
+                return recursiveScanBoxTree(box.getParent(), start);
             else
                 return null;
         }
@@ -368,8 +368,8 @@ public class GroupByExampleOperator extends BaseOperator
         }
         else
         {
-            if (box.getParentBox() != null)
-                return recursiveScanBoxTree(box.getParentBox(), start, pattern);
+            if (box.getParent() != null)
+                return recursiveScanBoxTree(box.getParent(), start, pattern);
             else
                 return null;
         }
@@ -377,7 +377,7 @@ public class GroupByExampleOperator extends BaseOperator
     
     private List<AreaPattern> findAllMatches(Box box, boolean start)
     {
-        if (box.getParentBox() != null)
+        if (box.getParent() != null)
         {
             List<AreaPattern> ret = new ArrayList<>();
             for (AreaPattern pat : patterns)
@@ -400,7 +400,7 @@ public class GroupByExampleOperator extends BaseOperator
     
     private AreaPattern findMatch(Box box, boolean start)
     {
-        if (box.getParentBox() != null)
+        if (box.getParent() != null)
         {
             AreaPattern ret = null;
             int cnt = 0;
@@ -426,7 +426,7 @@ public class GroupByExampleOperator extends BaseOperator
     
     private AreaPattern findMatch(Box box, boolean start, AreaPattern pat)
     {
-        if (box.getParentBox() != null)
+        if (box.getParent() != null)
         {
             if (findRootMatch(box, pat) != null)
             {
@@ -442,9 +442,9 @@ public class GroupByExampleOperator extends BaseOperator
     private Box findRootMatch(Box box, AreaPattern pat)
     {
         Box cur = box;
-        while (cur.getParentBox() != null)
+        while (cur.getParent() != null)
         {
-            cur = cur.getParentBox();
+            cur = cur.getParent();
             if (pat.matchesRoot(cur))
                 return cur;
         }
@@ -457,7 +457,7 @@ public class GroupByExampleOperator extends BaseOperator
             leaves.add(root);
         else
         {
-            for (Area child : root.getChildAreas())
+            for (Area child : root.getChildren())
                 findLeafAreas(child, leaves);
         }
     }
@@ -470,7 +470,7 @@ public class GroupByExampleOperator extends BaseOperator
             if (cur == anc)
                 return true;
             else
-                cur = cur.getParentBox();
+                cur = cur.getParent();
         }
         return false;
     }
@@ -495,11 +495,11 @@ public class GroupByExampleOperator extends BaseOperator
     
     private void createSuperArea(List<Area> group)
     {
-        if (group.get(0).getParentArea() != null)
+        if (group.get(0).getParent() != null)
         {
             if (group.size() > 1)
             {
-                Area parent = group.get(0).getParentArea();
+                Area parent = group.get(0).getParent();
                 //compute the bounds
                 Rectangular gp = computeGroupGP(parent, group);
                 //create the super area
@@ -547,9 +547,9 @@ public class GroupByExampleOperator extends BaseOperator
     
     private void recursiveAnalyzeAreas(Area root)
     {
-        if (root.getParentArea() != null) //do not analyze the root area
+        if (root.getParent() != null) //do not analyze the root area
             analyzeArea(root);
-        for (Area child : root.getChildAreas())
+        for (Area child : root.getChildren())
             recursiveAnalyzeAreas(child);
     }
     
@@ -562,12 +562,12 @@ public class GroupByExampleOperator extends BaseOperator
         List<Box> groups = getGroupCommonAncestors(boxes, cparent, area);
         
         if ((groups.isEmpty() || (groups.size() == 1 && groups.get(0) == cparent))
-                && cparent.getParentBox() != null)
+                && cparent.getParent() != null)
         {
             //if there are no groups, we probably take the whole subtree. The parent is then one level up.
             if (groups.isEmpty())
                 groups.add(cparent);
-            cparent = cparent.getParentBox();
+            cparent = cparent.getParent();
         }
         
         BoxSignature psig = new BoxSignature(cparent);
@@ -658,9 +658,9 @@ public class GroupByExampleOperator extends BaseOperator
         List<Box> ret = new ArrayList<>();
         Box cur = box;
         ret.add(cur);
-        while (cur.getParentBox() != null)
+        while (cur.getParent() != null)
         {
-            cur = cur.getParentBox();
+            cur = cur.getParent();
             ret.add(cur);
         }
         return ret;
@@ -678,7 +678,7 @@ public class GroupByExampleOperator extends BaseOperator
         Box cur = box;
         do
         {
-            Box cparent = cur.getParentBox();
+            Box cparent = cur.getParent();
             if (cparent == parent) 
                 return cur; //stop on the given parent
             else
@@ -687,7 +687,7 @@ public class GroupByExampleOperator extends BaseOperator
                 if (!ab.encloses(pb))
                     return cur; //stop because the parent box does not fit to the area
             }
-            cur = cur.getParentBox();
+            cur = cur.getParent();
         } while (cur != null);
         return null; //nothing found
     }
@@ -701,9 +701,9 @@ public class GroupByExampleOperator extends BaseOperator
     {
         int ret = 0;
         Box cur = box;
-        while (cur.getParentBox() != null)
+        while (cur.getParent() != null)
         {
-            cur = cur.getParentBox();
+            cur = cur.getParent();
             ret++;
         }
         return ret;

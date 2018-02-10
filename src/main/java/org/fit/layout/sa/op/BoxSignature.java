@@ -127,25 +127,25 @@ public class BoxSignature
             boxName = "";
         boxId = src.getAttribute("id");
         boxClass = src.getAttribute("class");
-        if (src.getParentBox() != null)
-            boxIndex = computeBoxIndex(src.getParentBox(), src);
+        if (src.getParent() != null)
+            boxIndex = computeBoxIndex(src.getParent(), src);
         //get the ancestor statistics
         List<Box> anc = getAncestors(src);
         for (Box box : anc)
         {
             if (pId == null && box.getAttribute("id") != null)
                 pId = box.getAttribute("id");
-            if (pClass == null && box.getParentBox() != null && box.getAttribute("class") != null)
+            if (pClass == null && box.getParent() != null && box.getAttribute("class") != null)
             {
                 pClass = box.getAttribute("class");
-                if (box.getParentBox() != null)
-                    pClassIndex = computeClassIndex(box.getParentBox(), box, pClass);
+                if (box.getParent() != null)
+                    pClassIndex = computeClassIndex(box.getParent(), box, pClass);
             }
             if (pBlock == null && box.getDisplayType() == DisplayType.BLOCK)
             {
                 pBlock = box.getTagName();
-                if (box.getParentBox() != null)
-                    pBlockIndex = computeNameIndex(box.getParentBox(), box, pBlock);
+                if (box.getParent() != null)
+                    pBlockIndex = computeNameIndex(box.getParent(), box, pBlock);
             }
         }
     }
@@ -169,7 +169,7 @@ public class BoxSignature
         int cnt = 0;
         for (int i = 0; i < parent.getChildCount(); i++)
         {
-            Box src = parent.getChildBox(i);
+            Box src = parent.getChildAt(i);
             String name = src.getTagName();
             String id = src.getAttribute("id");
             String cls = src.getAttribute("class");
@@ -186,7 +186,7 @@ public class BoxSignature
         int cnt = 0;
         for (int i = 0; i < parent.getChildCount(); i++)
         {
-            Box src = parent.getChildBox(i);
+            Box src = parent.getChildAt(i);
             String cls = src.getAttribute("class");
             if (cls != null && cls.equals(clsname))
                 cnt++;
@@ -201,7 +201,7 @@ public class BoxSignature
         int cnt = 0;
         for (int i = 0; i < parent.getChildCount(); i++)
         {
-            Box src = parent.getChildBox(i);
+            Box src = parent.getChildAt(i);
             String tagname = src.getTagName();
             if (tagname != null && tagname.equals(name))
                 cnt++;
@@ -223,9 +223,9 @@ public class BoxSignature
         List<Box> ret = new ArrayList<>();
         Box cur = box;
         //ret.add(cur);
-        while (cur.getParentBox() != null)
+        while (cur.getParent() != null)
         {
-            cur = cur.getParentBox();
+            cur = cur.getParent();
             ret.add(cur);
         }
         return ret;
